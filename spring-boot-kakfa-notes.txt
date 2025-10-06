@@ -1,0 +1,254 @@
+start: 04-10-2025
+
+message-driven systems using kafka as a broker.
+
+
+****************************************
+Section 2: Message Driven Architectures
+****************************************
+
+
+    To build very highly reliable and scalable systems.
+    Asynchronous messages.
+    docs:
+    https://www.reactiveprinciples.org/
+    https://www.reactivemanifesto.org/es
+    Enterprise Integration Patterns, book of Gregor Hohpe.
+    https://www.enterpriseintegrationpatterns.com/patterns/messaging/
+
+
+
+********************************
+Section 3: Messaging with Kafka 
+********************************
+
+    Index:
+        Kafka Overview
+        Alternative Technologies: AMQP & JMS
+        Communication Models
+            - Aysnc, Sync
+            - Request/Response Blocking/Non-Blocking
+            - Event Driven
+        Kafka Concepts in detail
+            - Topics & Partitions
+        Replication & Scaling
+
+-----------------
+
+    Communication Models:
+
+        Synchronous Request and Response - AKA Blocking
+            - wait for the service to do something.
+            - latency subject to chaining(when invoking multiple services).
+            - is difficult to determine the latency you will be expose unless you have
+            insights into the internals of other services.
+
+
+        Asynchronous Request and Response - AKA Non-Blocking
+            - reduced latency. the client makes a request and it can do some other processing
+            whilst awaits for the response.
+            - complexity: match responses to requests and how to handle responses error
+            or responses that don't return in a timely manner.
+
+
+        Event Driven Communication (Async)
+            - No response. The service is simply broadcasting events or commands via messages.
+            - loosely coupled: we don't need to know about other microservices. Neither if there is
+            another service listening to our service.
+            - We use Kafka in this approach. 
+
+--------------------
+
+    Kafka & JMS & AMQP
+    Alternative Messaging Technologies
+
+        Index:
+            Push vs Pull
+            AMQP (Rabbit) JMS (ActiveMQ)
+            Queues & Topic (JMS)
+            Brokers & Exchange
+            Ordering
+            Message Retention
+
+
+        JMS: is an API not a protocol. Is still a viable messaging solution. Uses a push mechanism.
+
+            Two messaging models:
+
+            - Queue (Point to Point)
+                - Producer => Queue => Consumer.
+                - In a queue each message has only one consumer.
+                - If the consumer is not available the queue retains the message. No messages are lost.
+                - Once a message is read by a consumer, it is removed from the queue.
+
+            - Topic (Publish/Subscribe)
+                - The topic can have multiple consumers for each message.
+                - Doesn't retain messages. The message is dropped if there is no active consumer.
+                The consumer will never see that message.
+                - Messages can easily be lost.
+
+            ActiveMQ
+                - uses virtual topics that is a hybrid of queues and topics.
+                - backing each topic with a queue, so there is a persistence.
+
+
+        AMQP: there is no API here because it is a wire level protocol.
+
+            - Producer =>      Broker        => Consumer
+                        Exchange -> Queues  
+                        [Routing]
+
+                            ---Store----
+
+            - The message is sent from the producer to the broker.
+            - An exchange is registered within the broker.
+            - The exchange type and binding rules define the routing behavior.
+            This combination determine to wich queue or queues the message is then sent.
+
+            - Exchanges types:
+                - Direct: The message key within the message is used to direct messages to the consumers.
+                - Fanout: Sends a copy of the message to all queues bound to the topic. Routing key is ignored here.
+
+            - AMQP Implementations: RabbitMQ, Apache Cupid
+                - AMQP and RabbitMQ has been seen to be more performant than JMS due to feature such as
+                batching of messages, binary message format and advanced routing features.
+                - RabbitMQ uses a push mechanism.
+
+
+        Kafka: Uses a pull mechanism.
+
+            - Push mechanism
+                - This model is geared towards speed by sending messages to the client.
+                - Messages pushed to consumer immediately.
+                - Overwhelmed consumers, when the producers send messages faster than the consumers can process them(backpressure).
+                - There is some backoff patterns that can help mitigate the consumer being overwhelmed, but these can be quite complicated.
+            
+            - Pull mechanism
+                - Consumer polls for the next message.
+                - The performance risk is to have a busy wait loop. This happens when there is no data for the consumer, so it continually pulls.
+                - In order to prevent this, Kafka implements a long wait mechanism.
+                - Furthermore, to improve efficiency,Kafka implements a batching mechanism, and this results in fewer network calls.
+                - So the consumer is also working at a pace that it can handle. 
+                - The broker absorbs any backpressure so as not overwhelmed the client.
+
+            - Message Retention
+                - In Kafka we use the concept of LOG rather than topic.
+                - Kafka uses an append only log for recording messages and maintains a consumer's read position in the log using a pointer kwown as OFFSET.
+                - Using a log and a read pointer means that all messages can be retained for as long as configured. This could be for a few days of indefinitely.
+                - Retaining the messages opens up the possibilities of message Replay. This means you have the ability to process some or all of the previous messages.
+                - This leads to being able to recreate system states based on past events.
+                - Scenarios such as creating a new service instance or being able to replay data to help diagnose system issues.
+            
+            - Ordering
+                - Sometimes it is important to process messages in the order in which they were produced.
+                - Ordering is possible with each of the implementations: JMS, Rabbit, Kafka.
+                - But Kafka is the only one that can combine ordering with scaling.
+                - In Rabbit ordering is guaranteed only when the message published in one channel.
+                - In JMS we've dedicated consumers. This is possible, but not when involving multiple consumers.
+                - Kafka supports ordering via the message key and its use of partitions(form part of the log).
+                - The message is on a single partition and it will be processed by the same consumer.
+                - We are not using a dedicated topic, it means that the topic can still have multiple consumers and so scaling.
+                - But those other consumers will be reading from different partitions, thereby maintaining order on the partitions and still allowing scaling through multiple
+                consumers on that very same topic.
+                - Message ordering is guaranteed with Kafka in which scenario?
+                    Messages are writeen with keys ensuring related messages are sent to the same partition.
+                    By writing related messages to the same topic partition, Kafka is able to guarantee ordering.
+
+--------------------
+
+    What is Kafka?
+
+        An introduction to the key concepts and architecture
+
+        Index:
+            - Brokers, Producers, Consumers
+            - Topics, Partitions, Logs, Offsets
+            - Keys
+            - Consumer Groups
+            - CLusters
+            - Replication
+            - Leader Partitions, Follower Partitions
+
+        Why you are using Kafka?
+            - Publish Subscribe Messaging
+            - Realtime Stream Processing
+            - Fault Tolerant
+            - Highly Available
+            - Highly Scalable
+            - High Throughput
+
+
+        Producer to Consumer
+
+            - Producer (Sends to Broker) => Broker (Message store) => Consmer (pulls from Broker)
+
+        Topics
+            
+            - Ordered sequence of events, it is a persistence record of events. AKA log.
+
+            - Producer  =>    Broker    => Consumer
+                            - Topic A
+                            - Topic B
+
+        Log
+            - All events are recorded in the log. An event helds its position subject to the retention period.
+            - The log is inmutable, wich means the content will not cannot be changed.
+            - Events remain in the topic, so we have the OFFSET, it is a reference to our read position.
+            - The broker maintains the next read position via the OFFSET.
+
+
+        Partitions
+            - The topic it's actually split into a number of logs. These logs are referred to as partitions.
+            - Partitions allow parallelism for producers and brokers. And this parallelism enables the high throughput.
+            - The same key on multiple messages will mean that same messages are placed on the same partition.
+
+        
+        Cluster
+            - A cluster contains multiple Brokers
+            - It guarantees Kafka's resilience.
+        
+
+        Replication
+            - Partition level replication
+            - load distribution
+            - if a broker node fails, then we've not lost any of the data.
+            - It is still available in another node.
+            - Replication is achieved when events from the leader partition are replicated to the follower partitions.
+        
+--------------------
+
+Messages & Events
+
+    - What is a Message?
+    - What is an Event?
+        - The message is the envelope that carries the payload.
+        - The Message(or Record) is the envelope and the Event is the letter withint the envelope.
+        - The payload can be an event or a request.
+
+    - Requests or Commands?
+        - Both are asking for an action to occur. E.g instruct the consuming service to dispatch payment.
+        - An 'ask' does not guarantee an action will occur.
+        - There is no guarantee a request will be actioned.
+    
+
+
+*******************************
+Section 4: 
+*******************************
+
+
+
+
+*******************************
+Section 5: 
+*******************************
+
+
+
+
+
+
+
+/search -> trae los métodos de recuperación
+
+
