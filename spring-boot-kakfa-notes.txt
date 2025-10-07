@@ -46,15 +46,15 @@ Section 3: Messaging with Kafka
 
         Asynchronous Request and Response - AKA Non-Blocking
             - reduced latency. the client makes a request and it can do some other processing
-            whilst awaits for the response.
+              whilst awaits for the response.
             - complexity: match responses to requests and how to handle responses error
-            or responses that don't return in a timely manner.
+              or responses that don't return in a timely manner.
 
 
         Event Driven Communication (Async)
             - No response. The service is simply broadcasting events or commands via messages.
             - loosely coupled: we don't need to know about other microservices. Neither if there is
-            another service listening to our service.
+              another service listening to our service.
             - We use Kafka in this approach. 
 
 --------------------
@@ -203,6 +203,12 @@ Section 3: Messaging with Kafka
             - The same key on multiple messages will mean that same messages are placed on the same partition.
 
         
+        Consumer groups
+            - Allow multiple consumers to collaboratively process messages from topics by dividing topic partitions among themselves.
+            - Only one consumer in the group consumer will consume a message.
+            - Each partition will be assigned to only one consumer in any one consumer group so messages are not shared.
+    
+
         Cluster
             - A cluster contains multiple Brokers
             - It guarantees Kafka's resilience.
@@ -210,32 +216,241 @@ Section 3: Messaging with Kafka
 
         Replication
             - Partition level replication
-            - load distribution
+            - load distribution.
             - if a broker node fails, then we've not lost any of the data.
             - It is still available in another node.
             - Replication is achieved when events from the leader partition are replicated to the follower partitions.
+            - Messages are replicated across broker nodes to ensure Resiliency.
+
         
 --------------------
 
-Messages & Events
+    Messages & Events
 
-    - What is a Message?
-    - What is an Event?
-        - The message is the envelope that carries the payload.
-        - The Message(or Record) is the envelope and the Event is the letter withint the envelope.
-        - The payload can be an event or a request.
+        - What is a Message? What is an Event?
+            - The message is the envelope that carries the payload.
+            - The Message(or Record) is the envelope and the Event is the letter withint the envelope.
+            - The payload can be an event or a request.
+            - An event represents something that has happened
 
-    - Requests or Commands?
-        - Both are asking for an action to occur. E.g instruct the consuming service to dispatch payment.
-        - An 'ask' does not guarantee an action will occur.
-        - There is no guarantee a request will be actioned.
+        - Requests or Commands?
+            - A request/command indicates that a consuming service should do something
+            - Both are asking for an action to occur. E.g instruct the consuming service to dispatch payment.
+            - An 'ask' does not guarantee an action will occur.
+            - There is no guarantee a request will be actioned.
+    
+--------------------
+
+
+    What is a Kafka message?
+
+        - Key
+            - Providing a Key is optional.
+            - Default key is null.
+            - If there is a null message key there is no guarantee in which partition the message will be written to.
+            - Key facilitates guaranteed ordering.
+            - If a message is written to a topic with a key, then it will be written to the same topic partition as other messages with
+              the same key.
+
+        - Headers
+            - Key value pair, event metadata.
+
+        - Payload (Value)
+            - String, Json or Avro. Anything that can be represented as an array of bytes.
+            - Max default size: 1mb
+
+        - Payloads - what should be in there?
+            - Protecting data not oversharing.
+            - Sufficient data for Consumers.
+
+
+--------------------
+
+    ZooKeeper & Kraft (Cluster metadata management)
+
+        - ZooKeeper (now deprecated)
+
+            - Is an open source tool for maintaining synchronization of configuration in distributed systems.
+            - ZooKeeper manage the metadata required to run a Kafka cluster that included tasks such as:
+                - Identifying the brokers within the cluster.
+                - Monitoring the brokers status and health. Which brokers are recently started? Are the brokers in the cluster sill available?
+                - Topic management such as:
+                    - Creation and deletion of topics.
+                    - Leadership election topics.
+            - Why leave ZooKeeper?
+                - Running ZooKeeper to manage the metadata requires a cluster of at least three ZooKeeper nodes.
+                - Large deployments would have many more ZooKeeper instances, and that's a lot of java processes to manage, creating a huge administration cost.
+                - These processes are storing metadata about the Kafka cluster outside the Kafka cluster, does not make sense. It represents a duplication.
+                - The transfer of this metadata state between ZooKeeper and Kafka take can considerable time.
+                - These reasons and the impact on scalability meant that a new solution was required.
+
+
+        - Kraft (Apache Kafka Raft)
+            - Manages clustering data.
+            - Internalisation of Metadata wich means cluster management without external assistance.
+            - Simplified Admin: This is a much simpler model to administer because Kraft removes the need for an external application.
+            - Event Based Management: Kraft uses an event based consensus protocol using logs like Kafka uses logs.
+            - Improves the cluster management by reducing metadata duplication, communication overheads and removing the scalability limitations. 
+
+
+
+****************************************
+Section 4: Installing and running Kafka
+****************************************
+
+
+    Index:
+        - Download and intall Kafka
+        - Start the Kafka server
+        - Send and recieve messages
+        - Use the Kafka Command Line Tools
+            - Inspect / Create / Update / Delete Topics
+            - Inspect Consumer Groups
+
+
+--------------------
+
+    * Installing Kafka:    
+
+        - Open windows features and check the option "Windows Subsystem for Linux" it will be active.
+
+        - Open PowerShell as admin:
+            - wsl --status
+            - wsl --list
+            - wsl --update
+            - wsl --instal -d Ubuntu
+            - UNIX username: jchaconv | password: dota2prime
+
+        - Open Ubunt terminar, find this in start of windows (inicio)
+            - sudo apt update
+            - sudo apt install openjdk-17-jdk
+            - java -version
+            - mkdir tools
+            - Choose the last binary of Scala (kafka download page). Through windows explorer copy and paste the file in the tools folder.
+            - cd tools
+            - mkdir kafka
+            - cd kafka
+            - tar -xvf ../kafka_2.13-3.7.0.tgz
+            - ls
+            - cd kafka_2.13-3.7.0
+
+--------------------    
     
 
+    * Running Kafka
 
-*******************************
-Section 4: 
-*******************************
+        - set a cluster id through an env_variable, kafka provides an utilitary:   
+            - KAFKA_CLUSTER_ID="$(bin/kafka-storage.sh random-uuid)"
+            - echo $KAFKA_CLUSTER_ID   ---->  some random alphanumeric value
 
+        - We need to format the log directory location. This is a directory that will be used for the persistent store of the message topics and all the metadata for Kafka.
+            - bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties  ----> this will now set up the log directory in the default location of /tmp/kraft-combined-logs
+            - /tmp is not the best location as this folder often gets cleaned up when the machine is rebooted. Change the location to a folder that is longer lasting. If you want to do that change
+              of directory, you need to edit the server.properties file and modify the log.dirs setting.  
+
+        - OPTIONAL at the begin, define message topics metadata location with default config:
+            - rm -rf /tmp/kraft-combined-logs   ----> in case the existence id is different and represents conflicts
+
+        - Start the server
+            - bin/kafka-server-start.sh config/kraft/server.properties
+
+        - Sending and Receiving
+            - note: "." and "_" is equal in Kafka
+            - Open 2 terminals, each one for consumer and producer
+
+            - In consumer console:
+                - bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic my.first.topic
+                    -> a warn terminal message appears and indicates that our topic is not created and Kafka creates for us.
+
+            - In producer console:
+                - bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my.first.topic
+                    > my first message    ----> enter and the message appears in consumer console
+            - Ctrl + c in both consoles to finish
+
+
+--------------------
+
+
+    * Kafka Command Line Tools
+
+        - The Kafka CLI Tools come packaged with the Kafka installation and can be used to assist with the management and running of the Kafka service.
+        And to help with the configuration of topics and partitions.
+
+        - Explore the /bin folder (its location is inside the installation folder), there are several command line tool utilities available for us to use.
+        We can simply type the name of the command line tool and follow it with the --help parameter.
+        bin/kafka-console-consumer.sh --help     ---> return all the options available
+        
+        - Start / Stop Kafka Server
+            - bin/kafka-server-start.sh config/kraft/server.properties   --->  an active attach console
+            - In other window: bin/kafka-server-stop.sh   ---> the server is stopped
+
+
+--------------------
+
+
+    * CLI Tools - Topic Tools
+
+        
+        Topic CLI Tool can be used for list, create, modify, delete and view details of a topic.
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --list                                           ---> list the topics. __consumer_offsets is used to store info about committed offsets for each topic and partition. 
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic my.second.topic                 ---> create a new topic
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic my.second.topic               ---> shows information of the topic
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --alter --topic my.second.topic --partitions 3   ---> modify the number of partitions within the topic. The topic name cannot be changed.
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic my.second.topic                 ---> to delete a topic 
+
+
+--------------------
+
+
+    * Consumer Group CLI Tool
+
+        - A consumer group is a collection of consumers working together to consume messages of the partitions of the topic.
+
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --create --topic cg.demo.topic --partitions 5     ---> create a new topic with five partitions
+
+        bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic cg.demo.topic
+
+        bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list                                    ----> shows the consumer groups(until here is empty)
+
+        (In a new console)
+        bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic cg.demo.topic --group my.first.consumer.group
+        
+            - To setup a new consumer associated with the specified consumer group
+
+
+        bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my.first.consumer.group
+
+            - shows the details of the consumer group
+            - CURRENT-OFFSET: Is the last committed offset of the partition
+            - LOG-END-OFFSET: Is the highest offset of the partition
+            - LAG: Is the number of not consumed messages on the partition
+
+        Execute this again in another console to have two consumers listening to the specified topic:
+
+            - bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic cg.demo.topic --group my.first.consumer.group
+
+
+        bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my.first.consumer.group
+
+            - shows that one of the consumers is listening to messages on partitions 0,1 and 2. Although, the other consumer is listening
+              on partitions 3 and 4. This is called re-balancing(a process that is executed when a consumer is join or leave a CG
+              or when number of partitions is changed).
+
+        
+        bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my.first.consumer.group --state
+
+            - shows the state and health of the Consumer group. Until this point the CG has 2 members.
+
+        
+        bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my.first.consumer.group --members
+        
+            - shows details of the consumers within a consumer group
 
 
 
