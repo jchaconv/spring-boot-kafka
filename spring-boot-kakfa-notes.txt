@@ -40,12 +40,12 @@ Section 3: Messaging with Kafka
         Synchronous Request and Response - AKA Blocking
             - wait for the service to do something.
             - latency subject to chaining(when invoking multiple services).
-            - is difficult to determine the latency you will be expose unless you have
+            - is difficult to determine the latency you will be exposed unless you have
             insights into the internals of other services.
 
 
         Asynchronous Request and Response - AKA Non-Blocking
-            - reduced latency. the client makes a request and it can do some other processing
+            - reduced latency. the client makes a request, and it can do some other processing
               whilst awaits for the response.
             - complexity: match responses to requests and how to handle responses error
               or responses that don't return in a timely manner.
@@ -287,7 +287,7 @@ Section 3: Messaging with Kafka
 
         - Kraft (Apache Kafka Raft)
             - Manages clustering data.
-            - Internalisation of Metadata wich means cluster management without external assistance.
+            - Internalisation of Metadata which means cluster management without external assistance.
             - Simplified Admin: This is a much simpler model to administer because Kraft removes the need for an external application.
             - Event Based Management: Kraft uses an event based consensus protocol using logs like Kafka uses logs.
             - Improves the cluster management by reducing metadata duplication, communication overheads and removing the scalability limitations. 
@@ -348,7 +348,7 @@ Section 4: Installing and running Kafka
             - /tmp is not the best location as this folder often gets cleaned up when the machine is rebooted. Change the location to a folder that is longer lasting. If you want to do that change
               of directory, you need to edit the server.properties file and modify the log.dirs setting.  
 
-        - OPTIONAL at the begin, define message topics metadata location with default config:
+        - OPTIONAL at the beginning, define message topics metadata location with default config:
             - rm -rf /tmp/kraft-combined-logs   ----> in case the existence id is different and represents conflicts (sometimes it throws an Exception)
 
         - Start the server
@@ -610,6 +610,63 @@ Section 5: Coding Kafka with Spring Boot
             - mvn clean install
             - mvn spring-boot:run
             - Send a message
+
+--------------------
+
+    Note: Manual topic creation is the best production practice to avoid mistakes.
+
+--------------------
+
+    * Producer
+
+        - Created classes
+
+            - message.OrderDispatched
+
+        - Modified classes
+
+            - DispatchConfiguration
+            - DispatchService
+            - OrderCreatedHandler
+            - OrderCreatedHandlerTest
+            - DispatchServiceTest
+            - pom.xml  // to comment the exclude section of lombok and set a version to compile locally (tests)
+
+        - check the correct build with mvn clean install
+
+
+--------------------
+
+    * Consuming using the CLI
+
+        - End to end flow:
+
+
+                            order.created                       order.dispatched
+            - Console    --------------------->   Dispatch    ---------------------->   Console
+              Producer                            Service                               Consumer
+
+
+
+        - We need to use the CLI console to receive the message sent by the Dispatch Service.
+          Used the CLI Tools to produce and consume events.
+
+
+        - In order to prove the end to end flow to works successfully:
+
+            - Start the Kafka server
+            - Start the Spring Boot Application
+
+            - Create a Consumer which listening to the correct topic
+                - bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic order.dispatched.topic
+
+            - Start the Producer pointing to order.created.topic
+                            - Send the message: {"orderId":"9084d899-8f62-479c-99b6-923db09c2ce4","item":"item-1"}
+
+            - Check the correct log in the Consumer console.
+
+--------------------
+
 
 --------------------
 
