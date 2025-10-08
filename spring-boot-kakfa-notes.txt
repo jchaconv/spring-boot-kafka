@@ -349,7 +349,7 @@ Section 4: Installing and running Kafka
               of directory, you need to edit the server.properties file and modify the log.dirs setting.  
 
         - OPTIONAL at the begin, define message topics metadata location with default config:
-            - rm -rf /tmp/kraft-combined-logs   ----> in case the existence id is different and represents conflicts
+            - rm -rf /tmp/kraft-combined-logs   ----> in case the existence id is different and represents conflicts (sometimes it throws an Exception)
 
         - Start the server
             - bin/kafka-server-start.sh config/kraft/server.properties
@@ -364,7 +364,7 @@ Section 4: Installing and running Kafka
 
             - In producer console:
                 - bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my.first.topic
-                    > my first message    ----> enter and the message appears in consumer console
+                    > my first message    ---->  enter and the message appears in consumer console. I noticed that the topic is created when the message is sent, not before.
             - Ctrl + c in both consoles to finish
 
 
@@ -438,7 +438,7 @@ Section 4: Installing and running Kafka
 
         bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my.first.consumer.group
 
-            - shows that one of the consumers is listening to messages on partitions 0,1 and 2. Although, the other consumer is listening
+            - shows that one of the consumers is listening to messages on partitions 0,1 and 2. Additionally, the other consumer is listening
               on partitions 3 and 4. This is called re-balancing(a process that is executed when a consumer is join or leave a CG
               or when number of partitions is changed).
 
@@ -454,16 +454,170 @@ Section 4: Installing and running Kafka
 
 
 
-*******************************
-Section 5: 
-*******************************
+*****************************************
+Section 5: Coding Kafka with Spring Boot
+*****************************************
+
+
+
+    * Creating the project
+
+        - We are going to create an order dispatch service.
+        
+        - Create the project with https://start.spring.io/
+            - spring boot version: 2.7.16
+            - group: dev.vilelo
+            - artifact: dispatch
+            - name: dispatch
+            - package name: dev.vilelo.dispatch
+            - packaging: Jar
+            - java: 17
+            - Dependencies: Lombok and Spring for Apache Kafka
+
+        - Check the project structure(project(sdk and language level) and modules)
+        and set the correct java version(17).
+
+        - Execute: mvn clean install. If there is any compilation erro, please check the following: 
+        
+            - Check maven version(mvn -v), if it is related to a different java version than 17,
+            then add in pom.xml the appropiate version of maven compiler:
+
+                <maven.compiler.source>17</maven.compiler.source>
+                <maven.compiler.target>17</maven.compiler.target> 
+
+            - Edit the path variable with the correct values in %JAVA_HOME%\bin
+
+            - Restart the console and IDE, execute again mvn -v. Should be the correct value. 
+
+        - To use lombok without errors:
+
+            - Preferences => Build => Compiler => Annotation Processors => Enable
+
+
+
+--------------------
+
+    * Consumer
+
+        - Add a consumer to the Dispatch Service
+
+        - Spring annotations
+
+            - @KafkaListener
+            - @Component
+            - @Service
+
+        - Created classes:
+            
+            - handler.OrderCreatedHandler
+            - service.DispatchService  => //no-op
+            - OrderCreatedHandlerTest (Go to OrderCreatedHandler class => right click => generate => test)
+            - DispatchServiceTest
+
+        - Modified file:
+
+            - application.properties
+
+                - Check out the ip of the ubuntu terminal with: ip addr show
+                - Then modify like this: spring.kafka.bootstrap-servers=172.18.214.147:9092
+
+        - Execute:
+
+            - mvn clean install
+            - mvn spring-boot:run   (after the kafka server is started)
+
+        - In Intellij it's possible to run different Ubuntu consoles
+
+            - just execute this: cd ~
+            - at first it looked like this: jchaconv@JULIOCHACON1:/$
+            - after the command: jchaconv@JULIOCHACON1:~$
+            - this is the chatgpt explanation:
+                - En IntelliJ, cuando abres la terminal con Ubuntu (WSL), arrancas desde la raíz / de la distro (/bin, /etc, /usr, etc.).
+                - En la app Ubuntu, arrancas desde tu home (/home/jchaconv → que te lo muestra como ~). Ahí está tu carpeta tools.
+            - Then go to the kafka directory in this path: /tools/kafka/kafka_2.13-3.7.0
+
+            - bin/kafka-server-start.sh config/kraft/server.properties
+
+            - bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic order.created.topic
+                - send a test message
+
+            - Check the logs of the spring boot application, kafka's message should have been received
+
+
+--------------------
+
+
+    * JSON Deserializer - Deserializing JSON messages in the Consumer
+
+        - Note: If I need to manage both String and JSON deserialization, then I need to use a factory to choose between each configurations
+          and the key-values in the application.properties will be unnecessary.
+
+        - Created classes:
+
+            - message.OrderCreated
+            - util.TestEventData
+
+        - Modified files
+
+            - application.properties
+            - pom.xml (jackson dependency added)
+            - OrderCreatedHandlerTest
+            - DispatchServiceTest
+
+        - Check the correct result with: mvn clean install
+
+        - Send this message with the Kafka-producer:
+            {"orderId":"9084d899-8f62-479c-99b6-923db09c2ce4","item":"item-1"}
+
+        - POISON PILL: If I send an incorrect message such as String message or an incorrect Json, then Spring is unable to deserialize the message
+          and the Exception is thrown again and again. Also, if I restart the application, the problem remains because the topic is blocked
+          and stopping other events to be consumed.
+
+          Furthermore, although I deleted the topic through the Kafka-producer console, the spring application kept processing the invalid message
+          over and over again.
+
+
+
+--------------------
+
+    * Deserializer Error Handling
+
+        - Modified files: application.properties
+
+            spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+            spring.kafka.consumer.properties.spring.deserializer.value.delegate.class=org.springframework.kafka.support.serializer.JsonDeserializer
+
+        - Test again and we see that the app is throwing an Exception when it received an invalid json event.
+
+
+--------------------
+
+    * Spring Bean Configuration
+
+        - To move the configuration from properties to Spring Beans
+
+        - Created classes:
+
+            DispatchConfiguration
+
+        - Modified classes and file(s):
+
+            - application.properties
+            - handler.OrderCreatedHandler  // factory prop added
+
+        - Execute:
+
+            - mvn clean install
+            - mvn spring-boot:run
+            - Send a message
+
+--------------------
 
 
 
 
 
 
-
-/search -> trae los métodos de recuperación
+--------------------
 
 
