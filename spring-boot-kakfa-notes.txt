@@ -344,9 +344,11 @@ Section 4: Installing and running Kafka
             - echo $KAFKA_CLUSTER_ID   ---->  some random alphanumeric value
 
         - We need to format the log directory location. This is a directory that will be used for the persistent store of the message topics and all the metadata for Kafka.
+
             - bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c config/kraft/server.properties  ----> this will now set up the log directory in the default location of /tmp/kraft-combined-logs
-            - /tmp is not the best location as this folder often gets cleaned up when the machine is rebooted. Change the location to a folder that is longer lasting. If you want to do that change
-              of directory, you need to edit the server.properties file and modify the log.dirs setting.  
+
+            - /tmp is not the best location as this folder often gets cleaned up when the machine is rebooted. Change the location to a folder that is longer lasting. If you want to do that, you need
+              to change of directory, so, edit the server.properties file and modify the log.dirs setting.
 
         - OPTIONAL at the beginning, define message topics metadata location with default config:
             - rm -rf /tmp/kraft-combined-logs   ----> in case the existence id is different and represents conflicts (sometimes it throws an Exception)
@@ -421,7 +423,7 @@ Section 4: Installing and running Kafka
         (In a new console)
         bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic cg.demo.topic --group my.first.consumer.group
         
-            - To setup a new consumer associated with the specified consumer group
+            - To set up a new consumer associated with the specified consumer group
 
 
         bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my.first.consumer.group
@@ -477,10 +479,10 @@ Section 5: Coding Kafka with Spring Boot
         - Check the project structure(project(sdk and language level) and modules)
         and set the correct java version(17).
 
-        - Execute: mvn clean install. If there is any compilation erro, please check the following: 
+        - Execute: mvn clean install. If there is any compilation error, please check the following:
         
             - Check maven version(mvn -v), if it is related to a different java version than 17,
-            then add in pom.xml the appropiate version of maven compiler:
+            then add in pom.xml the appropriate version of maven compiler:
 
                 <maven.compiler.source>17</maven.compiler.source>
                 <maven.compiler.target>17</maven.compiler.target> 
@@ -665,7 +667,66 @@ Section 5: Coding Kafka with Spring Boot
 
             - Check the correct log in the Consumer console.
 
---------------------
+
+
+******************************************
+Section 6: Assignment - Tracking Service
+******************************************
+
+    * Consume and Produce Events using Kafka. The Dispatch Service will be updated to produce a new JSON event to a
+      topic called dispatch.tracking. This event will be consumed by a new Spring Boot application called the
+      Tracking Service.
+
+
+        - In my solution I'm still wanting to use the Dispatch Service to consume an event, then send it to the tracking topic,
+          and finally consumed that event from the new Tracking Service.
+
+        - In dispatch-service
+
+            - Modified classes:
+
+                - OrderCreatedHandler
+                - DispatchService
+
+
+            - Created classes:
+
+                - OrderStatus
+                - OrderTracked
+
+        - To test before the setup of the new service, create a consumer:
+
+            - bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic dispatched.tracking.topic
+
+        - Send a message with the producer to the following topic:
+
+            - bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic order.observed.topic
+
+              {"orderId":"9084d899-8f62-479c-99b6-923db09c2ce4","item":"D-monitor 24 pulgadas teros-4k definition"}
+
+
+        - Check the consumer console. The result was this:
+            {"orderId":"9084d899-8f62-479c-99b6-923db09c2ce4","creationDate":1759961005666,"orderStatus":"CANCELED","item":"D-Mechanic Keyboard Razer"}
+
+
+        - Until this point the event is successfully send and received in the application.
+
+
+        - After all configurations in tracking-service the result was successful.
+          I tested not only with producer console, I also tested with all the integration end to end flow.
+
+            - note: There is a problem when another application send events to the topic. In that  case the JsonSerializer
+                    includes type headers (__TypeId__) with the className of the other application. My consumer tries to instance
+                    that exactly class and throws an Exception because I don't have this value in "trusted packages".
+
+                    So, I added some changes in consumerFactory. (Doesn't work because of the version, I added comments in the class)
+
+                    - I'm going to try with properties solution. (Doesn't work)
+
+                    - The best solution is used a shared module for both applications and import the common class.
+
+            - {"orderId":"8764d899-8f62-567h-99b6-923db09c2ce4","item":"D-laptop-HP-32GB RAM-Intel Core i7"}
+
 
 
 --------------------

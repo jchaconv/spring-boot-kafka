@@ -32,6 +32,22 @@ public class OrderCreatedHandler {
     }
 
 
+    @KafkaListener(
+            id = "orderConsumerClient2",
+            topics = "order.observed.topic",
+            groupId = "dispatch.order.observed.consumer",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void listenTrackedOrder(OrderCreated payload) {
+        log.info("Received observed order: " + payload);
+        try {
+            dispatchService.processTrackedOrder(payload);
+        } catch (Exception e) {
+            log.info("Processing failure", e);
+        }
+    }
+
+
     // This code should be useful to test String Deserialization
     /*
     @KafkaListener(
