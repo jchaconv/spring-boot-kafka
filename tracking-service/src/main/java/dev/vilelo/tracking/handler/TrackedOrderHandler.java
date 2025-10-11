@@ -1,7 +1,7 @@
 package dev.vilelo.tracking.handler;
 
 
-import dev.vilelo.tracking.message.OrderTracked;
+import dev.vilelo.data_models.message.OrderTracked;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -20,7 +20,7 @@ public class TrackedOrderHandler {
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void listen(OrderTracked payload) {
-        log.info("Received payload: " + payload);
+        log.info("Received payload: {}", payload);
     }
 
 

@@ -1,9 +1,9 @@
 package dev.vilelo.dispatch.service;
 
-import dev.vilelo.dispatch.enums.OrderStatus;
+import dev.vilelo.data_models.enums.OrderStatus;
+import dev.vilelo.data_models.message.OrderTracked;
 import dev.vilelo.dispatch.message.OrderCreated;
 import dev.vilelo.dispatch.message.OrderDispatched;
-import dev.vilelo.dispatch.message.OrderTracked;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;

@@ -165,7 +165,7 @@ Section 3: Messaging with Kafka
             - Topics, Partitions, Logs, Offsets
             - Keys
             - Consumer Groups
-            - CLusters
+            - Clusters
             - Replication
             - Leader Partitions, Follower Partitions
 
@@ -191,8 +191,8 @@ Section 3: Messaging with Kafka
                             - Topic B
 
         Log
-            - All events are recorded in the log. An event helds its position subject to the retention period.
-            - The log is inmutable, wich means the content will not cannot be changed.
+            - All events are recorded in the log. An event held its position subject to the retention period.
+            - The log is immutable, which means the content will not cannot be changed.
             - Events remain in the topic, so we have the OFFSET, it is a reference to our read position.
             - The broker maintains the next read position via the OFFSET.
 
@@ -300,9 +300,9 @@ Section 4: Installing and running Kafka
 
 
     Index:
-        - Download and intall Kafka
+        - Download and install Kafka
         - Start the Kafka server
-        - Send and recieve messages
+        - Send and receive messages
         - Use the Kafka Command Line Tools
             - Inspect / Create / Update / Delete Topics
             - Inspect Consumer Groups
@@ -318,7 +318,7 @@ Section 4: Installing and running Kafka
             - wsl --status
             - wsl --list
             - wsl --update
-            - wsl --instal -d Ubuntu
+            - wsl --install -d Ubuntu
             - UNIX username: jchaconv | password: dota2prime
 
         - Open Ubunt terminar, find this in start of windows (inicio)
@@ -339,7 +339,7 @@ Section 4: Installing and running Kafka
 
     * Running Kafka
 
-        - set a cluster id through an env_variable, kafka provides an utilitary:   
+        - set a cluster id through an env_variable, kafka provides an utility:
             - KAFKA_CLUSTER_ID="$(bin/kafka-storage.sh random-uuid)"
             - echo $KAFKA_CLUSTER_ID   ---->  some random alphanumeric value
 
@@ -712,8 +712,10 @@ Section 6: Assignment - Tracking Service
         - Until this point the event is successfully send and received in the application.
 
 
-        - After all configurations in tracking-service the result was successful.
-          I tested not only with producer console, I also tested with all the integration end to end flow.
+        - After all configurations in tracking-service the result was unsuccessful.
+
+          I tested not only with producer console, I also tested with all the integration end to end flow, and there is a problem with Deserialization when a consumed a message
+          from Kafka that was send by another spring boot application. The error was that my Consumer doesn't find the message class of the Producer.
 
             - note: There is a problem when another application send events to the topic. In that  case the JsonSerializer
                     includes type headers (__TypeId__) with the className of the other application. My consumer tries to instance
@@ -727,6 +729,8 @@ Section 6: Assignment - Tracking Service
 
             - {"orderId":"8764d899-8f62-567h-99b6-923db09c2ce4","item":"D-laptop-HP-32GB RAM-Intel Core i7"}
 
+            - I created another application: data-model to share the message class between the dispatch and tracking services.
+              This project has lombok dependency. The integration and end to end tests were successful.
 
 
 --------------------

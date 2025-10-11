@@ -1,7 +1,8 @@
 package dev.vilelo.tracking;
 
 
-import dev.vilelo.tracking.message.OrderTracked;
+
+import dev.vilelo.data_models.message.OrderTracked;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,7 +30,7 @@ public class TrackingConfiguration {
     }
 
     @Bean
-    public ConsumerFactory<String, Object> consumerFactory(@Value("${kafka.bootstrap-servers}") String bootstrapServers) {
+    public ConsumerFactory<String, OrderTracked> consumerFactory(@Value("${kafka.bootstrap-servers}") String bootstrapServers) {
         Map<String, Object> config = new HashMap<>();
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);

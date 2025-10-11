@@ -56,6 +56,11 @@
 		</dependency>
 
 
+		<dependency>
+			<groupId>dev.vilelo</groupId>
+			<artifactId>data-models</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 
 
 		<dependency>
