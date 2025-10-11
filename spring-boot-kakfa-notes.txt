@@ -733,12 +733,38 @@ Section 6: Assignment - Tracking Service
               This project has lombok dependency. The integration and end to end tests were successful.
 
 
---------------------
+
+*****************************
+Section 7: Integration Tests
+*****************************
+
+    * Why do we need Integration Tests?
+        - Unit tests are small, quick and easy to write, but they just give us a result of each
+          unit code. We still don't know if this testing units of code work with each other in the way
+          that we want. Integration tests allow us to identify if the individual units of code
+          work correctly together.
+
+        - To build an integration test:
+
+            - Junit & Awaitility
+            - @SpringBootTest
+            - @ActiveProfiles
+            - @DirtiesContext   ------> Real SpringContext is not loaded
+            - @Autowired
+            - @EmbeddedKafka
 
 
+        - Created classes:
+
+            - tests.integration.OrderDispatchIntegrationTest
+            - tests.resources.application-test.properties
 
 
+        - Modified classes or files:
 
+            - pom.xml
+
+    - I finished the integration test of tracking-service as an assignment.
 
 --------------------
 
