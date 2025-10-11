@@ -15,7 +15,11 @@ import java.util.UUID;
 public class OrderDispatched {
 
 
-    private UUID orderId;
+    UUID orderId;
+
+    UUID processedById;
+
+    String notes;
 
 
 }

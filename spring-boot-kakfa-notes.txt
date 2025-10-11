@@ -339,7 +339,7 @@ Section 4: Installing and running Kafka
 
     * Running Kafka
 
-        - set a cluster id through an env_variable, kafka provides an utility:
+        - set a cluster id through an env_variable, kafka provides utility:
             - KAFKA_CLUSTER_ID="$(bin/kafka-storage.sh random-uuid)"
             - echo $KAFKA_CLUSTER_ID   ---->  some random alphanumeric value
 
@@ -727,7 +727,7 @@ Section 6: Assignment - Tracking Service
 
                     - The best solution is used a shared module for both applications and import the common class.
 
-            - {"orderId":"8764d899-8f62-567h-99b6-923db09c2ce4","item":"D-laptop-HP-32GB RAM-Intel Core i7"}
+            - {"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"D-laptop-HP-32GB RAM-Intel Core i7"}
 
             - I created another application: data-model to share the message class between the dispatch and tracking services.
               This project has lombok dependency. The integration and end to end tests were successful.
@@ -766,6 +766,124 @@ Section 7: Integration Tests
 
     - I finished the integration test of tracking-service as an assignment.
 
+
+
+
+**************************************************
+Section 8: Multiple instances and Consumer Groups
+**************************************************
+
+    * How to Consumer Groups help us?
+
+        - Isolation or Parallelism
+
+        - Distinct Processing Logic
+
+            - If there are two consumers with the same consumer group definition by the groupid, then they cannot process the same message.
+            - So, if I have an Invoicing consumer and a Dispatch consumer, the best practice is to define differents group-id's.
+            - Invoicing (groupid= orders.invoicing) Dispatch (groupid= orders.dispatch). As we see, each consumer receives a copy of every message.
+
+        - Throughput
+
+            - Achieve parallel processing by adding multiple consumers with the same groupId to handle the load of messages in the different partitions of the topic.
+            - max active consumers = number of partitions. This means that If I have three partitions I only can have three "active" consumers, the fourth consumer is
+              there, but it is idle(inactive).
+
+
+        - Fault Tolerance
+        - Scaling
+
+        - Heartbeating
+
+            - Heartbeat: The consumer will send a heartbeat to the broker at set intervals, indicating that it is still alive.
+            - Poll interval: And the response from the broker also confirms to the consumer that the broker is still available.
+
+
+        - Rebalancing: It means that the broker will redistribute the partitions associated with lost consumers to active consumers.
+                       Partition reassignment between consumers.
+
+
 --------------------
 
+
+    * Shared Consumer Group
+
+        Run 2 instances of the application
+        Unique application id for each
+
+        - To do this test is necessary to comment the listener created for the tracking-service assignment.
+
+        - Modified classes:
+
+            - OrderDispatched
+            - DispatchService
+
+
+        - Start two instances of the dispatch-service
+
+        - Consumer:
+
+            - bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic order.dispatched.topic
+
+        - Producer:
+
+            - bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic order.created.topic
+
+            - send the event:
+
+                {"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-1"}
+
+       - With this test I can see that only one instance is assigned to the topic partition and the other is idle.
+         Only one instance in the consumer-group received the event.
+
+--------------------
+
+
+    * Consumer Fail over (fault tolerance with consumer fail over)
+
+        - In this test:
+
+            - kill the assigned consumer
+            - Observe consumer group rebalance
+
+        - When I did the test I saw:
+
+            - The active app instance changes from this: dispatch.order.created.consumer: partitions assigned: []
+              to this: dispatch.order.created.consumer: partitions assigned: [order.created.topic-0]
+
+            - And it processes and send the event correctly.
+
+
+        - When a consumer leaves a consumer group that has multiple consumers, which of the following happens?
+
+            - There is a pause in the processing of messages from the partitions the consumer was assigned until they are reassigned.
+
+
+--------------------
+
+
+    * Duplicate Consumption:  Multiple consumers in different consumer groups
+
+        - Run 2 instances of the application
+        - Different group Ids
+            - To do this change the consumer-group-id before start the second instance of the application
+        - Both consumers assigned partition
+
+        - The result is:
+            - Both app instances processes the event send by the producer console on order.created.topic
+            - The console consumer on order.dispatched.topic shows that it received the event twice, each message for each app instance,
+              because both wrote an outbound.
+
+            - Finally I understand that is not a good practice to have different consumer group id's on the same application. But, it is necessary
+              to have its own consumer group id on a different application.
+
+
+
+
+--------------------
+
+
+
+
+--------------------
 

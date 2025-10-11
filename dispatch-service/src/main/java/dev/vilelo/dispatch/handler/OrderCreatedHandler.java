@@ -32,6 +32,7 @@ public class OrderCreatedHandler {
     }
 
 
+
     @KafkaListener(
             id = "orderConsumerClient2",
             topics = "order.observed.topic",
