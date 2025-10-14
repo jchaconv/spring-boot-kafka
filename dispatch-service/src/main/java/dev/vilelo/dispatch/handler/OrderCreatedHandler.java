@@ -6,6 +6,9 @@ import dev.vilelo.dispatch.message.OrderCreated;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -22,10 +25,13 @@ public class OrderCreatedHandler {
             groupId = "dispatch.order.created.consumer",
             containerFactory = "kafkaListenerContainerFactory"  // from Spring Bean Config onwards
     )
-    public void listen(OrderCreated payload) {
-        log.info("Received payload: " + payload);
+    public void listen(@Header(KafkaHeaders.RECEIVED_PARTITION) Integer partition,
+                       @Header(KafkaHeaders.RECEIVED_KEY) String key,
+                       @Payload OrderCreated payload) {
+        log.info("Received message:: partition => {}", partition);
+        log.info("message key: {} - payload: {}", key, payload);
         try {
-            dispatchService.process(payload);
+            dispatchService.process(key, payload);
         } catch (Exception e) {
             log.info("Processing failure", e);
         }
@@ -33,6 +39,7 @@ public class OrderCreatedHandler {
 
 
 
+    /*
     @KafkaListener(
             id = "orderConsumerClient2",
             topics = "order.observed.topic",
@@ -47,6 +54,7 @@ public class OrderCreatedHandler {
             log.info("Processing failure", e);
         }
     }
+    */
 
 
     // This code should be useful to test String Deserialization

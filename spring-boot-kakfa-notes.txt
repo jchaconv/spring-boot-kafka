@@ -454,7 +454,9 @@ Section 4: Installing and running Kafka
         
             - shows details of the consumers within a consumer group
 
+        Additionally, to delete a cg, use this:
 
+            bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --delete --group dispatch.order.created.consumer
 
 *****************************************
 Section 5: Coding Kafka with Spring Boot
@@ -788,6 +790,7 @@ Section 8: Multiple instances and Consumer Groups
             - Achieve parallel processing by adding multiple consumers with the same groupId to handle the load of messages in the different partitions of the topic.
             - max active consumers = number of partitions. This means that If I have three partitions I only can have three "active" consumers, the fourth consumer is
               there, but it is idle(inactive).
+            - High Throughput = More consumers (each for partitions)
 
 
         - Fault Tolerance
@@ -879,11 +882,180 @@ Section 8: Multiple instances and Consumer Groups
 
 
 
+*****************************************
+Section 9: Keys, partitions and ordering
+*****************************************
+
+In this section
+    - What is ordering?
+    - Partitions revisited
+    - What disrupts ordering?
+    - How to guarantee ordering?
+    - Keys
+
+
+- What is ordering?
+
+    - Putting things into the correct place following a given rule.
+    - Sometimes events must be processed in the correct order. For example:
+      In the case of user crud: Create, Update and Delete a specified user.
+      Delete event cannot be processed before the Create event.
+
+- Partitions revisited
+
+    - A topic can have multiple partitions
+    - Each partition has 0 or 1 consumer
+    - So, more partition, more consumers, more throughput, but also, more overheads.
+
+- What disrupts ordering?
+
+    - Ordering can fail when events are processed at different rates.
+    - An event can overtake each other and therefore lose their place in the sequence whilst in the topic.
+    - Recalling that a topic consists of multiple partitions given our events A, B and C, it is possible
+      that the produced events are written to different partitions, and if we have multiple consumers then
+      we have no control over the processing order. For example: Event A (create user), B (update user), C (delete user)
+
+                                  TOPIC
+
+                   partition 0: |1|2|3|4|5|A|    => consumer
+                   partition 1: |1|2|C|          => consumer
+                   partition 2: |1|2|3|4|B|      => consumer
+
+                   oldest -----------------> latest
+
+
+- How to guarantee ordering?
+
+    - The ordering problem stems from the events being placed on different partitions.
+    - If we can have all the related events on the same partition, then we can prevent the events from overtaking one another.
+    - Remembering one partition has exactly one consumer. So, how to keep the related events on the same partition?
+
+                                  TOPIC
+
+                   partition 0: |1|2|3|A|B|C|    => consumer
+                   partition 1: |1|2|3|
+                   partition 2: |1|2|3|4|5|
+
+                   oldest -----------------> latest
+
+
+- Keys
+
+    - So, the answer is simple, use a message key.
+    - Is used to determine which partition a message should be written to.
+    - Every message written to Kafka can optionally include a message key.
+    - The message key essentially groups related messages together.
+    - Spring Kafka API allows you to specify any type for the message key.
+    - Try to keep things as simple as possible. The message key can be a UserId or an OrderId.
+    - Complex keys will make your system more difficult to understand.
+    - If a Key is not included with the message, then the Partitioner will decide which partition to write the message to.
+    - In that case, there is no guarantee on the order in which these messages will be consumed and processed.
+    - If the events has the same message key, then they will be processed by the same partition and consumer.
+
+                                  TOPIC
+
+                         message-key: [order-id]
+                   partition 0: |1|2|3|A|B|C|    => consumer
+
+                   partition 1: |1|2|3|
+                   partition 2: |1|2|3|4|5|
+
+                   oldest -----------------> latest
+
+
+--------------------
+
+    * Message Keys: Sending and receiving keyed messages
+
+        - @Header
+        - @Payload
+        - Modified classes: OrderCreatedHandler, DispatchService and Tests classes
+        - mvn clean install
+
+--------------------
+
+    *  Consuming Keyed Messages => The relationship between keyed messages and partitions
+
+        - start the application
+
+        - To send a message key via command
+
+            bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic order.created.topic --property parse.key=true --property key.separator=:
+
+        - To print the received message key
+
+            bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic order.dispatched.topic --property print.key=true --property key.separator=:
+
+        - Send this event in the producer:
+
+            "66785":{"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-1"}
+
+            - The application logs showed this:  message key: "66785" - payload: OrderCreated(orderId=ee2bb741-539e-4ebe-af2d-9649eb57fd12, item=item-test-1)
+            - The console consumer also received correctly the message with the specified key.
+
+        - Use the topic cli:
+
+            - bin/kafka-topics.sh --bootstrap-server localhost:9092 --describe --topic order.created.topic               ------------> PartitionCount: 1
+
+            - bin/kafka-topics.sh --bootstrap-server localhost:9092 --alter --topic order.created.topic --partitions 5
+
+        - Restart the spring-boot application, so we see that the 5 partitions are assigned to the consumer application.
+
+            app log:
+                "dispatch.order.created.consumer: partitions assigned: [order.created.topic-0, order.created.topic-1, order.created.topic-2, order.created.topic-3, order.created.topic-4]"
+
+        - When a second instance of the application is started, there is a rebalancing and this consumer app is assigned to the following topics:
+
+            logs showed this:
+                "dispatch.order.created.consumer: partitions assigned: [order.created.topic-3, order.created.topic-4]"
+
+            and in the first instance:
+                "dispatch.order.created.consumer: partitions assigned: [order.created.topic-0, order.created.topic-1, order.created.topic-2]"
+
+
+        - Look at the details of the consumer group:
+
+            bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+            bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group dispatch.order.created.consumer
+
+        - Send a message with the producer:
+
+            "7789":{"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-1"}
+
+            - Only the second application instance processed the event.
+            - Send two more messages with the same key:
+
+                "7789":{"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-2"}
+                "7789":{"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-3"}
+
+            - We can see that only the second application instance processed the events with the same key.
+
+            - When we see the details of the consumer group, we noticed that only one partition has the logs of the processed events.
+
+            - Now, send messages with a different key message:
+
+                "4359":{"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-1"}
+                "4359":{"orderId":"ee2bb741-539e-4ebe-af2d-9649eb57fd12","item":"item-test-2"}
+
+                These messages were processed by other partition.
+
 
 --------------------
 
 
 
 
+
+
 --------------------
+
+
+
+
+
+
+--------------------
+
+
+
 

@@ -27,7 +27,7 @@ public class DispatchService {
     private static final UUID APPLICATION_ID = randomUUID();
 
 
-    public void process(OrderCreated orderCreated) throws Exception {
+    public void process(String key, OrderCreated orderCreated) throws Exception {
 
         OrderDispatched orderDispatched = OrderDispatched.builder()
                 .orderId(orderCreated.getOrderId())
@@ -36,9 +36,10 @@ public class DispatchService {
                 .build();
 
         //making sync this process with get()
-        kafkaProducer.send(ORDER_DISPATCHED_TOPIC, orderDispatched).get();
+        kafkaProducer.send(ORDER_DISPATCHED_TOPIC, key, orderDispatched).get();
 
-        log.info("Sent messages: orderId: {} - processedById: {}", orderCreated.getOrderId(), APPLICATION_ID);
+        log.info("Sent messages:: message key => {}", key);
+        log.info("orderId: {} - processedById: {}", orderCreated.getOrderId(), APPLICATION_ID);
 
     }
 
