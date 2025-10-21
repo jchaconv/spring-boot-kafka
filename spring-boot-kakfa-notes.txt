@@ -1040,15 +1040,58 @@ In this section
                 These messages were processed by other partition.
 
 
---------------------
+
+*******************************************
+Section 10: Consuming Multiple Event Types
+*******************************************
+
+    * How to consume multiple event types from the same topic
+
+        - Modified:
+
+            TrackedOrderHandler  => @KafkaHandler added
+            TrackingConfiguration
+            OrderTrackingIntegrationTest  => just an indicator of Timer (pollDelay)
+
+        - mvn clean install
+
+    - Section Recap:
+
+        - Updated DispatchTrackingHandler
+            - @KafkaHandler
+            - @KafkaListener
+        - Updated TrackingConfiguration
+            - Removed default deserialization type
+            - Configured trusted package
+
+        - no real tests, just configuration
+
+
+
+**********************************************
+Section 11: Assignment - Multiple Event Types
+**********************************************
+
+    - The dispatch service needs to produce two different types of events and send them to
+      the topic: dispatch.tracking
+
+    - The tracking service receives these events and sends the corresponding status to the topic:
+      tracking.status
+
+    - The complete flow is as the following:
 
 
 
 
+                                                                                                                        _____tracking.status
+                                                                    DispatchCompleted                                   |
+                                                                    DispatchPreparing                                   |
+                    order.observer----------->                                                                          |
+                                                                                                                        |
+                                                                                                                        |
+        Order.......................................Dispatch...............................Tracking.....................|
 
-
---------------------
-
+               <------   order.dispatched                            dispatch.tracking
 
 
 

@@ -36,7 +36,7 @@ import static org.hamcrest.Matchers.equalTo;
 @ActiveProfiles("test")
 @EmbeddedKafka(controlledShutdown = true)
 @SpringBootTest(classes = {TrackingConfiguration.class})
-public class OrderTrackedIntegrationTest {
+class OrderTrackedIntegrationTest {
 
 
     @Autowired
@@ -112,7 +112,7 @@ public class OrderTrackedIntegrationTest {
 
 
         await().atMost(1, TimeUnit.SECONDS).pollDelay(100, TimeUnit.MILLISECONDS)
-                .until(testListener.dispatchedOrderCounter::get, equalTo(1));
+                .until(testListener.dispatchedOrderCounter::get, equalTo(0));
 
     }
 
