@@ -313,20 +313,25 @@ Section 4: Installing and running Kafka
     * Installing Kafka:    
 
         - Open windows features and check the option "Windows Subsystem for Linux" it will be active.
+          I think this step it's not necessary on Windows 11.
 
         - Open PowerShell as admin:
+            - wsl.exe --install
             - wsl --status
             - wsl --list
-            - wsl --update
+            - wsl --update    ---> reboot the system
             - wsl --install -d Ubuntu
-            - UNIX username: jchaconv | password: dota2prime
+            - UNIX username: jchaconv | password: backendDeveloper
 
-        - Open Ubunt terminar, find this in start of windows (inicio)
+        - Open Ubuntu terminal, find this in start of windows
             - sudo apt update
             - sudo apt install openjdk-17-jdk
             - java -version
+            - cd ~
             - mkdir tools
-            - Choose the last binary of Scala (kafka download page). Through windows explorer copy and paste the file in the tools folder.
+            - Choose this binary version: kafka_2.13-3.7.0.tgz
+              Through Windows explorer copy and paste the file into tools folder.
+              There is a new "partition" at the same level of c: or d: disks.
             - cd tools
             - mkdir kafka
             - cd kafka
@@ -367,6 +372,7 @@ Section 4: Installing and running Kafka
             - In producer console:
                 - bin/kafka-console-producer.sh --bootstrap-server localhost:9092 --topic my.first.topic
                     > my first message    ---->  enter and the message appears in consumer console. I noticed that the topic is created when the message is sent, not before.
+
             - Ctrl + c in both consoles to finish
 
 
@@ -1100,5 +1106,29 @@ Section 11: Assignment - Multiple Event Types
 --------------------
 
 
+********************************************************
+Section 12: Error Handling, Retry & Dead Letter Topics
+********************************************************
 
+    - Exception Categories
+        - Not retryable exceptions, the same exception will be thrown, such as invalid message
+        - retryable exceptions, temporary errors, such as network connection error or bad gateway error.
+    - Maximum retry attempts.
+    - Dead Letter Topics (DLT) for messages that cannot complete the process.
+        - Wiremock for testing.
+
+    - Wiremock Overview
+        - A library that allows us to mock a webservice.
+        - Specify response for given REST request.
+        - Test with Spring Cloud Contract.
+        - Run as a standalone service.
+
+    - Retry
+        - Add a external REST -> Stock Service
+        - Exception handling - Retryable Exception
+        - Integration test
+            - @AutoConfigureWiremock
+            - wiremock.server.port
+            - stubWiremock
+        - All the code was already written.
 
